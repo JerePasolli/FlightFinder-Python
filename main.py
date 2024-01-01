@@ -29,11 +29,24 @@ for row in sheet_data:
         twelve_months
     )
 
-    if flight.price != 0 and flight.price < row["lowestPrice"]:
+    if flight is None:
+        continue
+
+    if flight.price < row["lowestPrice"]:
+        users = data_manager.get_customer_emails()
+        emails = [row["email"] for row in users]
+        names = [row["firstName"] for row in users]
+
         row["lowestPrice"] = flight.price
         data_manager.sheet_data = sheet_data
         data_manager.update_sheet_data(1)
-        notification_manager.send_sms(message=f"Low price alert! Only ARS${flight.price} to fly from {flight.origin_city}"
-                                              f"-{flight.origin_airport} to {flight.destination_city}-"
-                                              f"{flight.destination_airport}, from {flight.out_date} to "
-                                              f"{flight.return_date}.")
+        message = f"Low price alert! Only ARS${flight.price} to fly from {flight.origin_city}"
+        f"-{flight.origin_airport} to {flight.destination_city}-"
+        f"{flight.destination_airport}, from {flight.out_date} to "
+        f"{flight.return_date}."
+
+        if flight.stop_overs > 0:
+            message += f"\nFlight has {flight.stop_overs} stop over, via {flight.via_city}."
+
+        notification_manager.send_sms(message)
+        notification_manager.send_emails(emails, message)

@@ -1,6 +1,7 @@
 import requests
 from flight_data import FlightData
 import os
+from pprint import pprint
 
 TEQUILA_ENDPOINT = os.environ.get('TEQUILA_ENDPOINT')
 TEQUILA_API_KEY = os.environ.get('TEQUILA_API_KEY')
@@ -37,14 +38,29 @@ class FlightSearch:
         }
         response = requests.get(f"{TEQUILA_ENDPOINT}/v2/search", headers=self.headers, params=params)
         response.raise_for_status()
-        error = 0
         try:
             data = response.json()["data"][0]
         except IndexError:
-            error = 1
-
-        if error == 1:
-            flight_data = FlightData()
+            try:
+                params["max_stopovers"] = 1
+                response = requests.get(f"{TEQUILA_ENDPOINT}/v2/search", headers=self.headers, params=params)
+                response.raise_for_status()
+                data = response.json()["data"][0]
+                flight_data = FlightData(
+                    price=data["price"],
+                    origin_city=data["route"][0]["cityFrom"],
+                    origin_airport=data["route"][0]["flyFrom"],
+                    destination_city=data["route"][0]["cityTo"],
+                    destination_airport=data["route"][0]["flyTo"],
+                    out_date=data["route"][0]["local_departure"].split("T")[0],
+                    return_date=data["route"][1]["local_departure"].split("T")[0],
+                    stop_overs=1,
+                    via_city=data["route"][0]["cityTo"]
+                )
+                return flight_data
+            except IndexError:
+                print(f"No flight found for {iata_code}.")
+                return None
         else:
             flight_data = FlightData(
                 price=data["price"],
